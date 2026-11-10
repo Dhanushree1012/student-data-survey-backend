@@ -1,50 +1,122 @@
 ﻿import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { users } from '../data/mockData';
 import { AuthContext } from './AuthContext';
-import type { AppUser } from '../types';
+import { getProfile } from '../lib/dataService';
+import { supabase } from '../lib/supabase';
+import {
+  endLocalTestSession,
+  isLocalTestLoginEnabled,
+  restoreLocalTestSession,
+  startLocalTestSession,
+} from '../lib/localTestMode';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<AppUser | null>(null);
+  const [user, setUser] = useState<Awaited<ReturnType<typeof getProfile>> | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   useEffect(() => {
-    const savedUser = localStorage.getItem('student-health-hub-user');
-    if (savedUser) {
-      setUser(JSON.parse(savedUser) as AppUser);
+    if (!supabase) {
+      setUser(restoreLocalTestSession());
+      setIsLoading(false);
+      return;
     }
+
+    let active = true;
+    const restoreProfile = async (userId: string | null) => {
+      if (!userId) {
+        if (active) {
+          setUser(null);
+          setAuthError(null);
+          setIsLoading(false);
+        }
+        return;
+      }
+
+      try {
+        const profile = await getProfile(userId);
+        if (active) {
+          setUser(profile);
+          setAuthError(null);
+          setIsLoading(false);
+        }
+      } catch (error) {
+        console.error('Unable to load the authenticated account profile.', error);
+        if (active) {
+          setUser(null);
+          setAuthError(error instanceof Error ? error.message : 'Unable to load your account profile.');
+          setIsLoading(false);
+        }
+      }
+    };
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      void restoreProfile(session?.user.id ?? null);
+    });
+
+    void supabase.auth.getSession().then(({ data, error }) => {
+      if (error) {
+        throw error;
+      }
+      return restoreProfile(data.session?.user.id ?? null);
+    }).catch((error: unknown) => {
+      console.error('Unable to restore the Supabase session.', error);
+      if (active) {
+        setAuthError(error instanceof Error ? error.message : 'Unable to restore the Supabase session.');
+        setIsLoading(false);
+      }
+    });
+
+    return () => {
+      active = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const value = useMemo(
     () => ({
       user,
-      login: (email: string, password: string, role: AppUser['role']) => {
-        const matchedUser = users.find(
-          (entry) => entry.email.toLowerCase() === email.toLowerCase() && entry.role === role,
-        );
-
-        if (!matchedUser) {
-          const fallback = users.find((entry) => entry.role === role) ?? users[0];
-          setUser(fallback);
-          localStorage.setItem('student-health-hub-user', JSON.stringify(fallback));
-          return;
+      isLoading,
+      authError,
+      login: async (email: string, password: string) => {
+        if (!supabase) {
+          throw new Error('Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your local .env file.');
         }
 
-        if (password.length === 0) {
-          setUser(matchedUser);
-          localStorage.setItem('student-health-hub-user', JSON.stringify(matchedUser));
-          return;
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) {
+          throw new Error(error.message);
         }
 
-        setUser(matchedUser);
-        localStorage.setItem('student-health-hub-user', JSON.stringify(matchedUser));
+        const profile = await getProfile(data.user.id);
+        setUser(profile);
+        setAuthError(null);
       },
-      logout: () => {
+      loginAsLocalTestEnumerator: async () => {
+        if (!isLocalTestLoginEnabled) {
+          throw new Error('Temporary local sign-in is not enabled.');
+        }
+        setUser(startLocalTestSession());
+        setAuthError(null);
+      },
+      logout: async () => {
+        if (!supabase) {
+          endLocalTestSession();
+          setUser(null);
+          setAuthError(null);
+          return;
+        }
+
+        const { error } = await supabase.auth.signOut();
+        if (error) {
+          throw new Error(error.message);
+        }
+
         setUser(null);
-        localStorage.removeItem('student-health-hub-user');
+        setAuthError(null);
       },
     }),
-    [user],
+    [user, isLoading, authError],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
-

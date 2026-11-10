@@ -1,8 +1,10 @@
 import type { ReactNode } from 'react';
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { AppLayout } from './components/Layout';
 import { AuthProvider } from './context/AuthProvider';
 import { useAuth } from './context/AuthContext';
+import { canAccessRoute } from './lib/permissions';
+import type { RouteKey } from './types';
 import { DashboardPage } from './pages/DashboardPage';
 import { ScreeningSessionsPage } from './pages/ScreeningSessionsPage';
 import { StudentRegistrationPage } from './pages/StudentRegistrationPage';
@@ -18,10 +20,24 @@ import { ProfilePage } from './pages/ProfilePage';
 import { LoginPage } from './pages/LoginPage';
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
+  const { pathname } = useLocation();
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-100 text-sm text-slate-600" role="status">
+        Restoring your workspace...
+      </div>
+    );
+  }
 
   if (!user) {
     return <Navigate to="/login" replace />;
+  }
+
+  const routeKey = pathname === '/' ? 'dashboard' : pathname.slice(1) as RouteKey;
+  if (!canAccessRoute(user.role, routeKey)) {
+    return <Navigate to="/dashboard" replace />;
   }
 
   return children;
@@ -52,4 +68,3 @@ export default function App() {
     </AuthProvider>
   );
 }
-

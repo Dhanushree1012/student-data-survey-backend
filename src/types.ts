@@ -2,6 +2,7 @@ export type Role = 'organization_admin' | 'district_manager' | 'enumerator';
 
 export type AppUser = {
   id: string;
+  organizationId: string;
   name: string;
   email: string;
   role: Role;
@@ -29,7 +30,6 @@ export type School = {
   code: string;
   districtId: string;
   talukId: string;
-  beoId: string;
   status: 'active' | 'inactive';
 };
 
@@ -37,27 +37,37 @@ export type ScreeningSession = {
   id: string;
   name: string;
   districtId: string;
+  districtName: string;
   talukId: string;
+  talukName: string;
   schoolId: string;
+  schoolName: string;
+  beoName: string;
+  headMasterName: string;
+  screeningFacultyName: string;
   date: string;
-  status: 'active' | 'completed';
+  status: 'active' | 'completed' | 'cancelled';
   enumerators: string[];
 };
 
 export type StudentRecord = {
   id: string;
+  sessionId: string;
   siNumber: string;
   studentName: string;
   className: string;
   section: string;
-  sex: 'Male' | 'Female';
+  sex: 'Male' | 'Female' | 'Other' | 'Prefer not to specify';
   dateOfBirth: string;
   age: number;
   heightCm: number;
   weightKg: number;
   bmi: number;
-  skinThicknessMm: number;
-  midArmCircumferenceCm: number;
+  skeletalDeformity: 'No' | 'Yes' | 'Suspected' | 'Not assessed';
+  skeletalObservation: string;
+  skinThicknessMm: number | null;
+  midArmCircumferenceCm: number | null;
+  additionalRemarks: string;
   districtId: string;
   talukId: string;
   schoolId: string;

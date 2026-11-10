@@ -1,7 +1,13 @@
-﻿import { useAuth } from '../context/AuthContext';
+import { useCallback } from 'react';
+import { useAuth } from '../context/AuthContext';
+import { useRemoteData } from '../hooks/useRemoteData';
+import { getDistricts, getOrganizationName } from '../lib/dataService';
 
 export function ProfilePage() {
   const { user } = useAuth();
+  const loadOrganization = useCallback(() => getOrganizationName(user?.organizationId ?? ''), [user?.organizationId]);
+  const { data: organization, isLoading, error } = useRemoteData(loadOrganization);
+  const { data: districts } = useRemoteData(getDistricts);
 
   return (
     <div className="space-y-6">
@@ -11,10 +17,11 @@ export function ProfilePage() {
           <div><span className="font-semibold">Name:</span> {user?.name}</div>
           <div><span className="font-semibold">Email:</span> {user?.email}</div>
           <div><span className="font-semibold">Role:</span> {user?.role.replace('_', ' ')}</div>
-          <div><span className="font-semibold">District:</span> {user?.districtId ?? 'Organization-wide'}</div>
+          <div><span className="font-semibold">Organization:</span> {isLoading ? 'Loading…' : organization ?? 'Unavailable'}</div>
+          {error && <div role="alert" className="text-rose-700">Organization could not be loaded: {error}</div>}
+          <div><span className="font-semibold">District:</span> {districts?.find((district) => district.id === user?.districtId)?.name ?? (user?.districtId ? 'Assigned district' : 'Organization-wide')}</div>
         </div>
       </div>
     </div>
   );
 }
-

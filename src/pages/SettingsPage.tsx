@@ -1,12 +1,29 @@
-﻿export function SettingsPage() {
+import { useAuth } from '../context/AuthContext';
+import { isSupabaseConfigured } from '../lib/supabase';
+
+export function SettingsPage() {
+  const { user } = useAuth();
+
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold text-slate-900">Settings</h2>
       <div className="grid gap-4 md:grid-cols-2">
-        <div className="card"><h3 className="font-semibold text-slate-900">Organization configuration</h3><div className="mt-4 space-y-2 text-sm text-slate-600"><div>Retention policy: 7 years</div><div>Reporting timezone: IST</div><div>Sync strategy: background queue</div></div></div>
-        <div className="card"><h3 className="font-semibold text-slate-900">Security defaults</h3><div className="mt-4 space-y-2 text-sm text-slate-600"><div>Enforce 2FA for administrators: Yes</div><div>Session expiry: 30 minutes</div><div>Offline policy: cached with expiry</div></div></div>
+        <div className="card">
+          <h3 className="font-semibold text-slate-900">Backend connection</h3>
+          <div className="mt-4 space-y-2 text-sm text-slate-600">
+            <div>Provider: Supabase</div>
+            <div>Client configuration: {isSupabaseConfigured ? 'Configured' : 'Missing project URL or anon key'}</div>
+            <div>Organization ID: {user?.organizationId}</div>
+          </div>
+        </div>
+        <div className="card">
+          <h3 className="font-semibold text-slate-900">Security</h3>
+          <p className="mt-4 text-sm text-slate-600">
+            Data access is enforced by Supabase Row Level Security policies in the applied database migrations.
+            Authentication and account provisioning must be managed through your Supabase project.
+          </p>
+        </div>
       </div>
     </div>
   );
 }
-

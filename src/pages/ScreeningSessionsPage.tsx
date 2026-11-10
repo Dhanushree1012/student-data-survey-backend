@@ -1,32 +1,124 @@
-﻿import { CalendarClock, Plus } from 'lucide-react';
-import { screeningSessions } from '../data/mockData';
+import { CalendarClock, Plus, Play } from 'lucide-react';
+import { useState, type FormEvent } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { useRemoteData } from '../hooks/useRemoteData';
+import { createScreeningSession, getSchools, getScreeningSessions } from '../lib/dataService';
+import { getLocalDateString } from '../lib/date';
 
 export function ScreeningSessionsPage() {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const { data: sessions, isLoading, error, reload } = useRemoteData(getScreeningSessions);
+  const { data: schools, error: schoolsError } = useRemoteData(getSchools);
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState({
+    name: '',
+    date: getLocalDateString(),
+    schoolId: '',
+    beoName: '',
+    headMasterName: '',
+    screeningFacultyName: '',
+  });
+  const [saveError, setSaveError] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const canCreate = user?.role === 'organization_admin' || user?.role === 'district_manager';
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setSaveError('');
+    const school = schools?.find((item) => item.id === form.schoolId && item.status === 'active');
+    if (!user || !school) {
+      setSaveError('Select an active school before creating a session.');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      await createScreeningSession({
+        organizationId: user.organizationId,
+        userId: user.id,
+        name: form.name.trim(),
+        date: form.date,
+        beoName: form.beoName.trim(),
+        headMasterName: form.headMasterName.trim(),
+        screeningFacultyName: form.screeningFacultyName.trim(),
+        school,
+      });
+      setForm({ name: '', date: getLocalDateString(), schoolId: '', beoName: '', headMasterName: '', screeningFacultyName: '' });
+      setShowForm(false);
+      reload();
+    } catch (error) {
+      console.error('Unable to create the screening session.', error);
+      setSaveError(error instanceof Error ? error.message : 'The session could not be saved.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-2xl font-bold text-slate-900">Screening Sessions</h2>
-        <button className="inline-flex items-center gap-2 rounded-xl bg-cyan-600 px-4 py-2 font-medium text-white hover:bg-cyan-500">
-          <Plus size={16} /> New session
-        </button>
+        {canCreate && <button onClick={() => { setShowForm((visible) => !visible); setSaveError(''); }} className="inline-flex items-center gap-2 rounded-xl bg-cyan-600 px-4 py-2 font-medium text-white hover:bg-cyan-500"><Plus size={16} /> New session</button>}
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {screeningSessions.map((session) => (
-          <div key={session.id} className="card">
-            <div className="flex items-center justify-between">
-              <div className="font-semibold text-slate-900">{session.name}</div>
-              <span className="badge bg-emerald-100 text-emerald-700">{session.status}</span>
-            </div>
-            <div className="mt-4 space-y-2 text-sm text-slate-600">
-              <div className="flex items-center gap-2"><CalendarClock size={16} /> {session.date}</div>
-              <div>School ID: {session.schoolId}</div>
-              <div>Enumerators: {session.enumerators.length}</div>
-            </div>
+      {error && <div role="alert" className="rounded-xl bg-rose-50 p-4 text-sm text-rose-800">Sessions could not be loaded: {error} <button onClick={reload} className="ml-2 underline">Retry</button></div>}
+      {schoolsError && <div role="alert" className="rounded-xl bg-rose-50 p-4 text-sm text-rose-800">Schools could not be loaded: {schoolsError}</div>}
+      {showForm && (
+        <form onSubmit={(event) => void handleSubmit(event)} className="card space-y-4">
+          <h3 className="text-lg font-semibold text-slate-900">Create screening session</h3>
+          <div className="grid gap-4 md:grid-cols-3">
+            <label className="text-sm font-medium text-slate-700">Session name
+              <input required value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} className="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5" />
+            </label>
+            <label className="text-sm font-medium text-slate-700">Date
+              <input required type="date" min={getLocalDateString()} value={form.date} onChange={(event) => setForm((current) => ({ ...current, date: event.target.value }))} className="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5" />
+            </label>
+            <label className="text-sm font-medium text-slate-700">School
+              <select required value={form.schoolId} onChange={(event) => setForm((current) => ({ ...current, schoolId: event.target.value }))} className="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
+                <option value="">Select a school</option>
+                {(schools ?? []).filter((school) => school.status === 'active').map((school) => <option key={school.id} value={school.id}>{school.name}</option>)}
+              </select>
+            </label>
+            <label className="text-sm font-medium text-slate-700">BEO name
+              <input required value={form.beoName} onChange={(event) => setForm((current) => ({ ...current, beoName: event.target.value }))} className="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5" />
+            </label>
+            <label className="text-sm font-medium text-slate-700">Head Master
+              <input required value={form.headMasterName} onChange={(event) => setForm((current) => ({ ...current, headMasterName: event.target.value }))} className="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5" />
+            </label>
+            <label className="text-sm font-medium text-slate-700">Screening Faculty
+              <input required value={form.screeningFacultyName} onChange={(event) => setForm((current) => ({ ...current, screeningFacultyName: event.target.value }))} className="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5" />
+            </label>
           </div>
-        ))}
-      </div>
+          {saveError && <div role="alert" className="rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-800">{saveError}</div>}
+          <div className="flex justify-end gap-3">
+            <button type="button" onClick={() => setShowForm(false)} className="rounded-xl border border-slate-300 px-4 py-2 font-medium text-slate-700 hover:bg-slate-50">Cancel</button>
+            <button type="submit" disabled={isSaving || Boolean(schoolsError)} className="rounded-xl bg-cyan-600 px-4 py-2 font-medium text-white hover:bg-cyan-500 disabled:opacity-50">{isSaving ? 'Saving…' : 'Save session'}</button>
+          </div>
+        </form>
+      )}
+
+      {isLoading && <p role="status" className="text-sm text-slate-500">Loading screening sessions…</p>}
+      {!isLoading && !error && sessions?.length === 0 && <p className="text-sm text-slate-500">No screening sessions are available to your account.</p>}
+      {!error && (sessions?.length ?? 0) > 0 && (
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {(sessions ?? []).map((session) => (
+            <div key={session.id} className="card">
+              <div className="flex items-center justify-between">
+                <div className="font-semibold text-slate-900">{session.name}</div>
+                <span className="badge bg-cyan-100 text-cyan-700">{session.status}</span>
+              </div>
+              <div className="mt-4 space-y-2 text-sm text-slate-600">
+                <div className="flex items-center gap-2"><CalendarClock size={16} /> {session.date}</div>
+                <div>School: {session.schoolName}</div>
+                <div>Assigned enumerators: {session.enumerators.length}</div>
+              </div>
+              {session.status === 'active' && <button onClick={() => navigate(`/student-registration?sessionId=${encodeURIComponent(session.id)}`)} className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-xl bg-cyan-600 px-4 py-2 font-medium text-white hover:bg-cyan-500"><Play size={16} /> Start screening</button>}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
-

@@ -1,24 +1,73 @@
-﻿import { screeningSessions } from '../data/mockData';
+import { useState, type FormEvent } from 'react';
+import { useAuth } from '../context/AuthContext';
+import { getAssignments } from '../lib/dataService';
+import { useRemoteData } from '../hooks/useRemoteData';
+import { assignEnumerator, getEnumerators, getScreeningSessions } from '../lib/dataService';
+import { useRemoteData as useRemoteResource } from '../hooks/useRemoteData';
 
 export function AssignmentsPage() {
+  const { user } = useAuth();
+  const { data: assignments, isLoading, error, reload } = useRemoteData(getAssignments);
+  const { data: sessions } = useRemoteResource(getScreeningSessions);
+  const { data: enumerators } = useRemoteResource(getEnumerators);
+  const [form, setForm] = useState({ sessionId: '', enumeratorId: '' });
+  const [saveError, setSaveError] = useState('');
+  const [saving, setSaving] = useState(false);
+  const canManage = user?.role === 'organization_admin' || user?.role === 'district_manager';
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!user) return;
+    setSaving(true);
+    setSaveError('');
+    try {
+      await assignEnumerator({ organizationId: user.organizationId, ...form });
+      setForm({ sessionId: '', enumeratorId: '' });
+      reload();
+    } catch (error) {
+      console.error('Unable to assign the enumerator to the screening session.', error);
+      setSaveError(error instanceof Error ? error.message : 'Unable to save the assignment.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold text-slate-900">Assignments</h2>
-      <div className="table-shell">
-        <table>
-          <thead><tr><th>Session</th><th>Assigned enumerators</th><th>Status</th></tr></thead>
-          <tbody>
-            {screeningSessions.map((session) => (
-              <tr key={session.id}>
-                <td>{session.name}</td>
-                <td>{session.enumerators.join(', ')}</td>
-                <td><span className="badge bg-emerald-100 text-emerald-700">{session.status}</span></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      {canManage && <form onSubmit={(event) => void handleSubmit(event)} className="card grid gap-4 md:grid-cols-[1fr_1fr_auto]">
+        <label className="text-sm font-medium text-slate-700">Screening session
+          <select required value={form.sessionId} onChange={(event) => setForm((current) => ({ ...current, sessionId: event.target.value }))} className="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
+            <option value="">Select session</option>{(sessions ?? []).filter((session) => session.status === 'active').map((session) => <option key={session.id} value={session.id}>{session.name}</option>)}
+          </select>
+        </label>
+        <label className="text-sm font-medium text-slate-700">Enumerator
+          <select required value={form.enumeratorId} onChange={(event) => setForm((current) => ({ ...current, enumeratorId: event.target.value }))} className="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
+            <option value="">Select enumerator</option>{(enumerators ?? []).map((enumerator) => <option key={enumerator.id} value={enumerator.id}>{enumerator.name} · {enumerator.email}</option>)}
+          </select>
+        </label>
+        <button disabled={saving || !sessions?.length || !enumerators?.length} className="self-end rounded-xl bg-cyan-600 px-4 py-2.5 font-medium text-white disabled:opacity-50">{saving ? 'Saving…' : 'Assign'}</button>
+        {saveError && <p role="alert" className="text-sm text-rose-700 md:col-span-3">{saveError}</p>}
+      </form>}
+      {error && <div role="alert" className="rounded-xl bg-rose-50 p-4 text-sm text-rose-800">Assignments could not be loaded: {error} <button onClick={reload} className="ml-2 underline">Retry</button></div>}
+      {isLoading && <p role="status" className="text-sm text-slate-500">Loading assignments…</p>}
+      {!isLoading && !error && assignments?.length === 0 && <p className="text-sm text-slate-500">No screening sessions or assignments are available.</p>}
+      {!error && (assignments?.length ?? 0) > 0 && (
+        <div className="table-shell">
+          <table>
+            <thead><tr><th>Session</th><th>Assigned enumerators</th><th>Status</th></tr></thead>
+            <tbody>
+              {(assignments ?? []).map(({ session, enumerators }) => (
+                <tr key={session.id}>
+                  <td>{session.name}</td>
+                  <td>{enumerators.map((enumerator) => enumerator.name).join(', ') || 'No enumerators assigned'}</td>
+                  <td><span className="badge bg-emerald-100 text-emerald-700">{session.status}</span></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
-

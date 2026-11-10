@@ -1,5 +1,10 @@
 import type { Role, RouteKey } from '../types';
-import { roleAccess } from '../data/mockData';
+
+const roleAccess: Record<Role, RouteKey[]> = {
+  organization_admin: ['dashboard', 'screening-sessions', 'student-registration', 'students', 'schools', 'districts', 'enumerators', 'assignments', 'reports', 'audit-logs', 'settings', 'profile'],
+  district_manager: ['dashboard', 'screening-sessions', 'student-registration', 'students', 'schools', 'districts', 'enumerators', 'assignments', 'reports', 'audit-logs', 'profile'],
+  enumerator: ['dashboard', 'screening-sessions', 'student-registration', 'students', 'reports', 'profile'],
+};
 
 export function canAccessRoute(role: Role, routeKey: RouteKey): boolean {
   return roleAccess[role].includes(routeKey);
@@ -27,7 +32,7 @@ export function calculateBmi(weightKg: number, heightCm: number): number {
   return Number((weightKg / (heightInMeters * heightInMeters)).toFixed(2));
 }
 
-export function exportCsv(filename: string, rows: Record<string, string | number>[]): void {
+export function exportCsv(filename: string, rows: Record<string, string | number | null>[]): void {
   if (!rows.length) {
     return;
   }

@@ -3,8 +3,11 @@ import type { AppUser } from '../types';
 
 export type AuthContextValue = {
   user: AppUser | null;
-  login: (email: string, password: string, role: AppUser['role']) => void;
-  logout: () => void;
+  isLoading: boolean;
+  authError: string | null;
+  login: (email: string, password: string) => Promise<void>;
+  loginAsLocalTestEnumerator: () => Promise<void>;
+  logout: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -20,4 +23,3 @@ export function useAuth(): AuthContextValue {
 }
 
 export { AuthContext };
-
