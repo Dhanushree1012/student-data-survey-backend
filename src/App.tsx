@@ -1,0 +1,55 @@
+import type { ReactNode } from 'react';
+import { Navigate, Route, Routes } from 'react-router-dom';
+import { AppLayout } from './components/Layout';
+import { AuthProvider } from './context/AuthProvider';
+import { useAuth } from './context/AuthContext';
+import { DashboardPage } from './pages/DashboardPage';
+import { ScreeningSessionsPage } from './pages/ScreeningSessionsPage';
+import { StudentRegistrationPage } from './pages/StudentRegistrationPage';
+import { StudentsPage } from './pages/StudentsPage';
+import { SchoolsPage } from './pages/SchoolsPage';
+import { DistrictsTaluksPage } from './pages/DistrictsTaluksPage';
+import { EnumeratorsPage } from './pages/EnumeratorsPage';
+import { AssignmentsPage } from './pages/AssignmentsPage';
+import { ReportsPage } from './pages/ReportsPage';
+import { AuditLogsPage } from './pages/AuditLogsPage';
+import { SettingsPage } from './pages/SettingsPage';
+import { ProfilePage } from './pages/ProfilePage';
+import { LoginPage } from './pages/LoginPage';
+
+function ProtectedRoute({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return children;
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
+          <Route index element={<Navigate to="/dashboard" replace />} />
+          <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/screening-sessions" element={<ScreeningSessionsPage />} />
+          <Route path="/student-registration" element={<StudentRegistrationPage />} />
+          <Route path="/students" element={<StudentsPage />} />
+          <Route path="/schools" element={<SchoolsPage />} />
+          <Route path="/districts" element={<DistrictsTaluksPage />} />
+          <Route path="/enumerators" element={<EnumeratorsPage />} />
+          <Route path="/assignments" element={<AssignmentsPage />} />
+          <Route path="/reports" element={<ReportsPage />} />
+          <Route path="/audit-logs" element={<AuditLogsPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
+        </Route>
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      </Routes>
+    </AuthProvider>
+  );
+}
+

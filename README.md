@@ -1,20 +1,38 @@
-﻿# Student Health Hub
+# Student Health Hub
 
-This repository is intentionally organized as a production-oriented scaffold for the Student Health Screening System.
+Student Health Hub is a production-oriented school health screening and management system for districts, schools, enumerators, and administrators.
 
-## Project status
+## Stack
+- React + TypeScript + Vite
+- Tailwind CSS
+- React Router
+- Supabase client abstraction
+- Local role-based application flow and admin dashboard shell
 
-The current GitHub repository is effectively empty at the moment of this audit. There is no existing frontend framework, no current build system, no app implementation, and no database or authentication code committed yet. The structure below preserves the intended business architecture without forcing a migration away from a stack that does not exist yet.
-
-## Quick start
+## Getting started
 
 ```bash
-npm test
+npm install
+npm run dev
 ```
 
-## Maintainer notes
+## Environment variables
 
-- Keep the codebase feature-based instead of monolithic.
-- Keep database schema changes in version-controlled Supabase migrations.
-- Keep offline synchronization concerns separated from UI rendering.
-- Keep browser code, Supabase edge functions, and Android-specific code isolated.
+Copy `.env.example` to `.env` and configure:
+
+```bash
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key
+VITE_APP_ENV=development
+```
+
+## Validate
+
+```bash
+npm run validate
+npm run build
+```
+
+## Current status
+
+This repository now includes a functioning frontend shell, role-based navigation, health screening modules, reporting exports, and a prepared architecture for Supabase integration. External cloud services are not connected until valid credentials are supplied.

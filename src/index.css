@@ -1,0 +1,55 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color: #0f172a;
+  background-color: #f8fafc;
+  font-family: 'Segoe UI', sans-serif;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  background: linear-gradient(180deg, #f8fafc 0%, #e2e8f0 100%);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+.table-shell {
+  @apply overflow-hidden rounded-xl border border-slate-200 bg-white;
+}
+
+.table-shell table {
+  @apply min-w-full divide-y divide-slate-200;
+}
+
+.table-shell th,
+.table-shell td {
+  @apply px-4 py-3 text-left text-sm text-slate-700;
+}
+
+.table-shell thead {
+  @apply bg-slate-50 text-slate-600;
+}
+
+.card {
+  @apply rounded-2xl border border-slate-200 bg-white p-5 shadow-sm;
+}
+
+.badge {
+  @apply inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold;
+}
