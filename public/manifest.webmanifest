@@ -1,0 +1,10 @@
+﻿{
+  "name": "Student Health Hub",
+  "short_name": "StudentHealth",
+  "description": "Student Health Screening System",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0f172a",
+  "icons": []
+}

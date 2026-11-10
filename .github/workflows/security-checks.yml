@@ -1,0 +1,10 @@
+﻿name: Security Checks
+on:
+  workflow_dispatch:
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: echo "Security checks placeholder. Add scanners when implementation begins."

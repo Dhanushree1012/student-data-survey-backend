@@ -1,0 +1,10 @@
+﻿{
+  "name": "student-health-hub",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test",
+    "validate": "node --check src/main.js && node --check src/app/app-entry.js && node --check src/services/supabase/client.js"
+  }
+}
