@@ -6,7 +6,7 @@ Student Health Hub is a React + TypeScript web application backed by Supabase Au
 
 1. Create a Supabase project.
 2. Copy `.env.example` to `.env` and set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` from the project's API settings. These are the project URL and public anon/publishable key; never put a service-role key in the browser or commit it.
-3. Apply `supabase/migrations/001_init.sql` and `supabase/migrations/002_live_backend.sql` in order using the Supabase SQL Editor (or the Supabase CLI).
+3. Apply the SQL files in `supabase/migrations/` in numeric order using the Supabase SQL Editor (or the Supabase CLI).
 4. Create an organization administrator in Supabase Authentication, then create the initial organization and profile from the SQL Editor:
 
 ```sql
@@ -41,7 +41,7 @@ Set the application's allowed redirect URLs in Supabase Authentication settings 
 - Enumerators open **Screening Sessions**, choose **Start screening**, and record students for that session.
 - Student screening records, reports, and audit history are stored in Supabase; RLS restricts access by organization and role.
 
-Additional enumerator and district-manager accounts must be created in Supabase Auth and provisioned in `public.profiles`. Do not expose a Supabase service-role key in this frontend.
+After the initial administrator is provisioned, organization administrators can invite district managers and enumerators from the Enumerators page. District managers can invite enumerators in their own district. Invitation acceptance provisions the profile from the stored invitation scope; do not expose a Supabase service-role key in this frontend.
 
 ## Validate
 

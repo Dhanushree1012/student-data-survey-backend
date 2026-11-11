@@ -6,7 +6,9 @@ const SESSION_KEY = 'student-health-hub.local-test-session';
 const DATA_KEY = 'student-health-hub.local-test-data';
 
 export const isLocalTestLoginEnabled =
-  import.meta.env.VITE_ENABLE_LOCAL_TEST_LOGIN === 'true' && !isSupabaseConfigured;
+  import.meta.env.DEV &&
+  import.meta.env.VITE_ENABLE_LOCAL_TEST_LOGIN === 'true' &&
+  !isSupabaseConfigured;
 
 const localUser: AppUser = {
   id: 'local-test-enumerator',

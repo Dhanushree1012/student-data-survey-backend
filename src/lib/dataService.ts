@@ -1,5 +1,6 @@
 import type { PostgrestError } from '@supabase/supabase-js';
-import type { AppUser, AuditLog, District, School, ScreeningSession, StudentRecord, Taluk } from '../types';
+import type { AppUser, AuditLog, District, InvitationRole, School, ScreeningSession, StudentRecord, Taluk } from '../types';
+import type { Database } from './database.types';
 import { requireSupabase } from './supabase';
 import {
   getLocalTestAuditLogs,
@@ -20,6 +21,23 @@ function throwIfError(error: PostgrestError | null): void {
     throw new Error(error.message);
   }
 }
+
+export type InvitationHistoryRecord = Pick<
+  Database['public']['Tables']['user_invitations']['Row'],
+  | 'id'
+  | 'email'
+  | 'role'
+  | 'status'
+  | 'auth_status'
+  | 'created_at'
+  | 'last_auth_response_at'
+  | 'accepted_at'
+  | 'cancelled_at'
+>;
+
+export type InvitationSubmissionResult =
+  | { status: 'auth_request_accepted'; invitationId: string }
+  | { status: 'already_processing' | 'outcome_unknown' };
 
 export async function getProfile(userId: string): Promise<AppUser> {
   if (isLocalTestSessionActive() && userId === getLocalTestUser().id) {
@@ -235,6 +253,63 @@ export async function getEnumerators(): Promise<AppUser[]> {
   }));
 }
 
+export async function getUserInvitations(): Promise<InvitationHistoryRecord[]> {
+  const { data, error } = await requireSupabase()
+    .from('user_invitations')
+    .select('id, email, role, status, auth_status, created_at, last_auth_response_at, accepted_at, cancelled_at')
+    .order('created_at', { ascending: false })
+    .limit(100);
+
+  throwIfError(error);
+  return data ?? [];
+}
+
+export async function createUserInvitation(input: {
+  email: string;
+  role: InvitationRole;
+  districtId: string;
+  idempotencyKey: string;
+}): Promise<InvitationSubmissionResult> {
+  const { data, error } = await requireSupabase().functions.invoke<{
+    invitationId?: string;
+    status?: string;
+    code?: string;
+  }>('invite-user', {
+    body: {
+      action: 'invite',
+      email: input.email,
+      role: input.role,
+      districtId: input.districtId,
+      idempotencyKey: input.idempotencyKey,
+    },
+  });
+
+  if (error) {
+    const status = error.context instanceof Response ? error.context.status : undefined;
+    if (status !== undefined && status >= 400 && status < 500) {
+      throw new Error('The invitation could not be created. Check your permissions and invitation history.');
+    }
+    throw new Error('The invitation outcome could not be confirmed. Check invitation history before trying again.');
+  }
+  if (data?.status === 'auth_request_accepted' && data.invitationId) {
+    return { status: 'auth_request_accepted', invitationId: data.invitationId };
+  }
+  if (data?.status === 'already_processing' || data?.status === 'outcome_unknown') {
+    return { status: data.status };
+  }
+  throw new Error('The invitation outcome could not be confirmed. Check invitation history before trying again.');
+}
+
+export async function cancelUserInvitation(invitationId: string): Promise<void> {
+  const { data, error } = await requireSupabase().functions.invoke<{ status?: string }>(
+    'invite-user',
+    { body: { action: 'cancel', invitationId } },
+  );
+  if (error || data?.status !== 'cancelled') {
+    throw new Error('This invitation could not be cancelled. It may already be complete or outside your authorized scope.');
+  }
+}
+
 export async function getAssignments(): Promise<Array<{
   session: ScreeningSession;
   enumerators: AppUser[];
@@ -385,6 +460,24 @@ export async function assignEnumerator(input: {
     enumerator_id: input.enumeratorId,
   });
   throwIfError(error);
+}
+
+export async function unassignEnumerator(input: {
+  sessionId: string;
+  enumeratorId: string;
+}): Promise<void> {
+  const { data, error } = await requireSupabase()
+    .from('session_assignments')
+    .delete()
+    .eq('session_id', input.sessionId)
+    .eq('enumerator_id', input.enumeratorId)
+    .select('id')
+    .maybeSingle();
+
+  throwIfError(error);
+  if (!data) {
+    throw new Error('No authorized matching assignment was found.');
+  }
 }
 
 export async function createStudentScreening(input: {

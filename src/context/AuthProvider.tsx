@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { AuthContext } from './AuthContext';
 import { getProfile } from '../lib/dataService';
 import { supabase } from '../lib/supabase';
@@ -13,6 +13,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<Awaited<ReturnType<typeof getProfile>> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [authError, setAuthError] = useState<string | null>(null);
+  const profileLoadId = useRef(0);
 
   useEffect(() => {
     if (!supabase) {
@@ -23,8 +24,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     let active = true;
     const restoreProfile = async (userId: string | null) => {
+      const requestId = ++profileLoadId.current;
       if (!userId) {
-        if (active) {
+        if (active && requestId === profileLoadId.current) {
           setUser(null);
           setAuthError(null);
           setIsLoading(false);
@@ -34,14 +36,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       try {
         const profile = await getProfile(userId);
-        if (active) {
+        if (active && requestId === profileLoadId.current) {
           setUser(profile);
           setAuthError(null);
           setIsLoading(false);
         }
       } catch (error) {
         console.error('Unable to load the authenticated account profile.', error);
-        if (active) {
+        if (active && requestId === profileLoadId.current) {
           setUser(null);
           setAuthError(error instanceof Error ? error.message : 'Unable to load your account profile.');
           setIsLoading(false);
@@ -96,6 +98,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           throw new Error('Temporary local sign-in is not enabled.');
         }
         setUser(startLocalTestSession());
+        setAuthError(null);
+      },
+      acceptInvitation: async (invitationId: string) => {
+        if (!supabase) {
+          throw new Error('Supabase is not configured.');
+        }
+
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) {
+          throw new Error('The invitation session could not be verified.');
+        }
+        if (!session) {
+          throw new Error('The invitation link is invalid or has expired. Open the link from your invitation email again.');
+        }
+
+        const { data, error } = await supabase.rpc('accept_user_invitation', {
+          target_invitation_id: invitationId,
+        });
+        if (error || data !== true) {
+          throw new Error('This invitation cannot be accepted. It may have been cancelled or already used.');
+        }
+
+        const profile = await getProfile(session.user.id);
+        profileLoadId.current += 1;
+        setUser(profile);
         setAuthError(null);
       },
       logout: async () => {

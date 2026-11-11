@@ -1,7 +1,11 @@
 import { getEnumerators } from '../lib/dataService';
 import { useRemoteData } from '../hooks/useRemoteData';
+import { useAuth } from '../context/AuthContext';
+import { isLocalTestSessionActive } from '../lib/localTestMode';
+import { InvitationManagement } from '../components/InvitationManagement';
 
 export function EnumeratorsPage() {
+  const { user } = useAuth();
   const { data: enumerators, isLoading, error, reload } = useRemoteData(getEnumerators);
 
   return (
@@ -26,6 +30,9 @@ export function EnumeratorsPage() {
           </table>
         </div>
       )}
+      {!isLocalTestSessionActive()
+        && (user?.role === 'organization_admin' || user?.role === 'district_manager')
+        && <InvitationManagement />}
     </div>
   );
 }

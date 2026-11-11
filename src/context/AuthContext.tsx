@@ -7,6 +7,7 @@ export type AuthContextValue = {
   authError: string | null;
   login: (email: string, password: string) => Promise<void>;
   loginAsLocalTestEnumerator: () => Promise<void>;
+  acceptInvitation: (invitationId: string) => Promise<void>;
   logout: () => Promise<void>;
 };
 

@@ -1,4 +1,7 @@
 export type Role = 'organization_admin' | 'district_manager' | 'enumerator';
+export type InvitationRole = 'district_manager' | 'enumerator';
+export type InvitationStatus = 'provisioning' | 'pending' | 'accepted' | 'cancelled' | 'expired' | 'failed';
+export type InvitationAuthStatus = 'not_attempted' | 'in_flight' | 'accepted_by_auth' | 'rejected_by_auth' | 'unknown';
 
 export type AppUser = {
   id: string;
@@ -92,6 +95,7 @@ export type RouteKey =
   | 'schools'
   | 'districts'
   | 'enumerators'
+  | 'invitations'
   | 'assignments'
   | 'reports'
   | 'audit-logs'
